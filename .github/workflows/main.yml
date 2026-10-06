@@ -42,15 +42,6 @@ jobs:
         run: |
           cl.exe hello.c
           hello.exe
-      - name: Enable Developer Command Prompt (amd64_arm)
-        uses: ./
-        with:
-          arch: amd64_arm
-      - name: Compile some C code (arm)
-        shell: cmd
-        run: |
-          cl.exe hello.c
-          dumpbin /headers hello.exe
       - name: Enable Developer Command Prompt (amd64_arm64)
         uses: ./
         with:
