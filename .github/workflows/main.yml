@@ -7,12 +7,12 @@ on:
       - master
       - release/*
   schedule:
-    - cron: '0 6 * * *'
+    - cron: '0 6 * * 1'
 
 jobs:
-  test:
-    name: default
-    runs-on: windows-latest
+  lint:
+    name: eslint
+    runs-on: ubuntu-latest
     steps:
       - name: Check out source code
         uses: actions/checkout@v7
@@ -20,14 +20,45 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: 24
-      - name: Download Internet
-        run: npm ci
+      - run: npm ci
       - name: Run eslint
         run: npm run lint
+      - name: Run unit tests
+        run: npm test
+  test:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # "vsyear" is passed as "vsversion"; empty means "use whatever is newest".
+          # "arm32" tells whether the Visual Studio on the image can still target 32-bit ARM
+          # (dropped in Visual Studio 2026).
+          - { os: windows-2022,          vsyear: '2022', arm32: true }
+          - { os: windows-2025-vs2026,   vsyear: '2026', arm32: false }
+          - { os: windows-latest,        vsyear: '',     arm32: false }
+    steps:
+      - name: Check out source code
+        uses: actions/checkout@v7
+      # No "npm ci" here on purpose: the action must run from the committed dist/ alone.
       - name: Enable Developer Command Prompt (amd64)
+        id: msvc
         uses: ./
         with:
           arch: amd64
+          vsversion: ${{ matrix.vsyear }}
+      - name: Check the outputs
+        shell: pwsh
+        run: |
+          $outputs = '${{ toJSON(steps.msvc.outputs) }}' | ConvertFrom-Json
+          $outputs | Format-List
+          # "amd64" is passed to vcvarsall as is (only aliases like "Win64" get rewritten to "x64").
+          if ($outputs.arch -ne 'amd64') { throw "unexpected arch: $($outputs.arch)" }
+          if (-not (Test-Path $outputs.vcvarsall)) { throw "vcvarsall not found: $($outputs.vcvarsall)" }
+          if (-not (Test-Path $outputs.'installation-path')) { throw "bad installation-path: $($outputs.'installation-path')" }
+          if ($outputs.'installation-path'.EndsWith('\')) { throw "installation-path has a trailing backslash" }
+          if (-not $outputs.'vs-version' -or -not $outputs.'toolset-version') { throw "missing version outputs" }
       - name: Compile and run some C code (amd64)
         shell: cmd
         run: |
@@ -37,20 +68,54 @@ jobs:
         uses: ./
         with:
           arch: amd64_x86
+          vsversion: ${{ matrix.vsyear }}
       - name: Compile and run some C code (x86)
         shell: cmd
         run: |
           cl.exe hello.c
           hello.exe
+      - name: Enable Developer Command Prompt (amd64_arm)
+        if: matrix.arm32
+        uses: ./
+        with:
+          arch: amd64_arm
+          vsversion: ${{ matrix.vsyear }}
+      # Only compile: the Windows SDK no longer ships 32-bit ARM libraries, so linking is not possible.
+      - name: Compile some C code (arm)
+        if: matrix.arm32
+        shell: cmd
+        run: |
+          cl.exe /c hello.c
+          dumpbin /headers hello.obj
       - name: Enable Developer Command Prompt (amd64_arm64)
         uses: ./
         with:
           arch: amd64_arm64
+          vsversion: ${{ matrix.vsyear }}
       - name: Compile some C code (arm64)
         shell: cmd
         run: |
           cl.exe hello.c
           dumpbin /headers hello.exe
+  arm64-host:
+    name: native arm64 (windows-11-arm)
+    runs-on: windows-11-arm
+    steps:
+      - name: Check out source code
+        uses: actions/checkout@v7
+      - name: Enable Developer Command Prompt (default arch)
+        id: msvc
+        uses: ./
+      - name: Check that the default is the native architecture
+        shell: pwsh
+        run: |
+          if ('${{ steps.msvc.outputs.arch }}' -ne 'arm64') { throw "unexpected default arch: ${{ steps.msvc.outputs.arch }}" }
+      - name: Compile and run some C code (native arm64)
+        shell: cmd
+        run: |
+          cl.exe hello.c
+          hello.exe
+          dumpbin /headers hello.exe | findstr /i "machine"
   audit:
     name: npm audit
     runs-on: ubuntu-latest
@@ -64,9 +129,9 @@ jobs:
       - run: npm ci
       - run: npm audit --audit-level=moderate --omit=dev
       - run: npm audit --audit-level=critical
-  alias-arch:
-    name: arch aliases
-    runs-on: windows-latest
+  check-dist:
+    name: dist is up to date
+    runs-on: ubuntu-latest
     steps:
       - name: Check out source code
         uses: actions/checkout@v7
@@ -74,8 +139,15 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: 24
-      - name: Download Internet
-        run: npm ci
+      - run: npm ci
+      - name: Rebuild dist/ and fail if it differs from the committed one
+        run: npm run check-dist
+  alias-arch:
+    name: arch aliases
+    runs-on: windows-latest
+    steps:
+      - name: Check out source code
+        uses: actions/checkout@v7
       - name: Enable Developer Command Prompt
         uses: ./
         with:

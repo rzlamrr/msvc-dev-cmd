@@ -1,35 +1,30 @@
 name: msvc-dev-cmd (release)
 
+# Keeps the floating major version tag (e.g. "v2") pointing at the latest release of that major version,
+# so that users can write "uses: rzlamrr/msvc-dev-cmd@v2".
+
 on:
-  push:
-    branches:
-      - release/*
-  schedule:
-    - cron: '0 6 * * *'
+  release:
+    types: [published]
+
+permissions:
+  contents: write
 
 jobs:
-  test:
-    name: release
-    runs-on: windows-latest
-    steps:
-      - name: Setup Developer Command Prompt
-        uses: ilammy/msvc-dev-cmd@release/v1
-      - name: Check out source code
-        uses: actions/checkout@v7
-      - name: Compile and run some C code
-        shell: cmd
-        run: |
-          cl.exe hello.c
-          hello.exe
-  audit:
-    name: npm audit
+  major-tag:
+    name: update major tag
     runs-on: ubuntu-latest
     steps:
-      - name: Check out source code
+      - name: Check out the release
         uses: actions/checkout@v7
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: 24
-      - run: npm audit --audit-level=moderate --omit=dev
-      - run: npm audit --audit-level=critical
+      - name: Move the major version tag
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          if ! [[ "$TAG" =~ ^v([0-9]+)\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Release tag '$TAG' is not of the form vMAJOR.MINOR.PATCH, not touching the major tag."
+            exit 0
+          fi
+          major="v${BASH_REMATCH[1]}"
+          git tag --force "$major" "$TAG"
+          git push --force origin "refs/tags/$major"

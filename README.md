@@ -1,4 +1,4 @@
-<a href="https://github.com/ilammy/msvc-dev-cmd"><img alt="GitHub Actions status" src="https://github.com/ilammy/msvc-dev-cmd/workflows/msvc-dev-cmd/badge.svg"></a>
+<a href="https://github.com/rzlamrr/msvc-dev-cmd"><img alt="GitHub Actions status" src="https://github.com/rzlamrr/msvc-dev-cmd/workflows/msvc-dev-cmd/badge.svg"></a>
 
 # msvc-dev-cmd
 
@@ -7,6 +7,9 @@
 This sets up the environment for compiling C/C++ code from command line.
 
 Supports Windows. Does nothing on Linux and macOS.
+
+This is a maintained fork of [ilammy/msvc-dev-cmd](https://github.com/ilammy/msvc-dev-cmd), which has not been updated since March 2024.
+It is a drop-in replacement: change `ilammy/msvc-dev-cmd@v1` to `rzlamrr/msvc-dev-cmd@v2`. See [Migrating from v1](#migrating-from-ilammymsvc-dev-cmdv1).
 
 ## Example usage
 
@@ -17,7 +20,7 @@ jobs:
   test:
     steps:
       - uses: actions/checkout@v7
-      - uses: ilammy/msvc-dev-cmd@v1
+      - uses: rzlamrr/msvc-dev-cmd@v2
       - name: Build something requiring CL.EXE
         run: |
           cmake -G "NMake Makefiles" .
@@ -42,7 +45,7 @@ jobs:
           - amd64_arm64
     steps:
       - uses: actions/checkout@v7
-      - uses: ilammy/msvc-dev-cmd@v1
+      - uses: rzlamrr/msvc-dev-cmd@v2
         with:
           arch: ${{ matrix.arch }}
       - name: Build something requiring CL.EXE
@@ -56,8 +59,9 @@ jobs:
 
 - `arch` – target architecture
   - native compilation:
-    - `x64` (default) or its synonyms: `amd64`, `win64`, `x86_64`, `x86-64`
+    - `x64` (default, except on ARM64 runners where it is `arm64`) or its synonyms: `amd64`, `win64`, `x86_64`, `x86-64`
     - `x86` or its synonyms: `win32`
+    - `arm64` for native compilation on ARM64 runners such as `windows-11-arm`
   - cross-compilation: `x86_amd64`, `x86_arm`, `x86_arm64`, `amd64_x86`, `amd64_arm`, `amd64_arm64`
 - `sdk` – Windows SDK to use
   - do not specify to use the default SDK
@@ -71,6 +75,34 @@ jobs:
 - `uwp` – set `true` to build for Universal Windows Platform (i.e., for Windows Store)
 - `spectre` – set `true` to use Visual Studio libraries with [Spectre](https://meltdownattack.com) mitigations
 - `vsversion` – the Visual Studio version to use. This can be the version number (e.g. 16.0 for 2019) or the year (e.g. "2019"); omit this input to select the latest version of Visual Studio. On [GitHub-hosted runners](https://docs.github.com/actions/using-github-hosted-runners/about-github-hosted-runners/about-github-hosted-runners), this input is not required because there is only one Visual Studio in the environment.
+
+## Outputs
+
+These describe what `vcvarsall.bat` actually configured, for use by later steps (e.g., `${{ steps.msvc.outputs.vs-version }}` for a step with `id: msvc`).
+
+- `arch` – target architecture passed to `vcvarsall.bat`, after resolving synonyms (e.g., `Win64` becomes `x64`)
+- `vcvarsall` – path of the `vcvarsall.bat` that was used
+- `installation-path` – Visual Studio installation directory, without a trailing backslash
+- `vs-version` – Visual Studio version number (e.g., `17.0` for 2022, `18.0` for 2026)
+- `toolset-version` – full version of the MSVC toolset in use (e.g., `14.51.36231`)
+
+`installation-path`, `vs-version` and `toolset-version` are empty for very old Visual Studio versions that do not report them.
+
+## Troubleshooting
+
+If `toolset` or `vsversion` does not match what is installed, the error lists the Visual Studio installations found by `vswhere` and, for a bad `toolset`, the toolsets installed in the selected Visual Studio.
+Note that GitHub-hosted runners come with a single Visual Studio each (e.g., `windows-2022` has only 2022, `windows-2025-vs2026` only 2026), so `vsversion` normally does not need to be set there;
+see the [runner images](https://github.com/actions/runner-images) for the installed Visual Studio versions and toolsets.
+
+## Migrating from ilammy/msvc-dev-cmd@v1
+
+All inputs work as before. What is different in `v2`:
+
+- Runs on Node 24, so it needs a runner of version 2.327.0 or newer (GitHub-hosted runners are always recent enough).
+- On ARM64 runners the default `arch` is now `arm64` instead of `x64`. Set `arch: x64` (or `amd64_arm64` to cross-compile) to get the old behavior there.
+- Visual Studio 2026 is supported (`vsversion: "2026"` or `"18.0"`). It no longer supports targeting 32-bit ARM, so `amd64_arm` and friends fail on it.
+- New [outputs](#outputs), and error messages that list what is installed when `toolset` or `vsversion` does not match.
+- Values of environment variables containing `=` are no longer truncated.
 
 ## Caveats
 
@@ -90,7 +122,7 @@ If this is not acceptable, please file an issue, then we'll figure out something
 
 ### Reconfiguration
 
-You can invoke `ilammy/msvc-dev-cmd` multiple times during your jobs with different inputs
+You can invoke `rzlamrr/msvc-dev-cmd` multiple times during your jobs with different inputs
 to reconfigure the environment for building with different settings
 (e.g., to target multiple architectures).
 
@@ -100,21 +132,21 @@ jobs:
     steps:
       # ...
       - name: Configure build for amd64
-        uses: ilammy/msvc-dev-cmd@v1
+        uses: rzlamrr/msvc-dev-cmd@v2
         with:
           arch: amd64
 
       - run: build # (for amd64)
 
       - name: Configure build for x86
-        uses: ilammy/msvc-dev-cmd@v1
+        uses: rzlamrr/msvc-dev-cmd@v2
         with:
           arch: amd64_x86
 
       - run: build # (for x86)
 
       - name: Configure build for ARM64
-        uses: ilammy/msvc-dev-cmd@v1
+        uses: rzlamrr/msvc-dev-cmd@v2
         with:
           arch: amd64_arm64
 
