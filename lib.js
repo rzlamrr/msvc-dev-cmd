@@ -9,9 +9,10 @@ const PROGRAM_FILES = [process.env['ProgramFiles(x86)'], process.env['ProgramFil
 
 
 const EDITIONS = ['Enterprise', 'Professional', 'Community', 'BuildTools']
-const YEARS = ['2022', '2019', '2017']
+const YEARS = ['2026', '2022', '2019', '2017']
 
 const VsYearVersion = {
+    '2026': '18.0',
     '2022': '17.0',
     '2019': '16.0',
     '2017': '15.0',
@@ -45,11 +46,17 @@ function vsversion_to_year(vsversion) {
 }
 export { vsversion_to_year }
 
+// VS 2022 and older install under a directory named after the year, VS 2026 and newer
+// under one named after the major version number (e.g. "18").
+function vsversion_to_dirname(year) {
+    return Number(year) >= 2026 ? vsversion_to_versionnumber(year).split('.')[0] : year
+}
+
 const VSWHERE_PATH = `${PROGRAM_FILES_X86}\\Microsoft Visual Studio\\Installer`
 
 function findWithVswhere(pattern, version_pattern) {
     try {
-        let installationPath = child_process.execSync(`vswhere -products * ${version_pattern} -prerelease -property installationPath`).toString().trim()
+        let installationPath = child_process.execSync(`vswhere -products * ${version_pattern} -prerelease -property installationPath`).toString().trim().split(/\r?\n/)[0]
         return installationPath + '\\' + pattern
     } catch (e) {
         core.warning(`vswhere failed: ${e}`)
@@ -81,8 +88,9 @@ function findVcvarsall(vsversion) {
     const years = vsversion ? [vsversion_to_year(vsversion)] : YEARS
     for (const prog_files of PROGRAM_FILES) {
         for (const ver of years) {
+            const dir = vsversion_to_dirname(ver)
             for (const ed of EDITIONS) {
-                path = `${prog_files}\\Microsoft Visual Studio\\${ver}\\${ed}\\VC\\Auxiliary\\Build\\vcvarsall.bat`
+                path = `${prog_files}\\Microsoft Visual Studio\\${dir}\\${ed}\\VC\\Auxiliary\\Build\\vcvarsall.bat`
                 core.info(`Trying standard location: ${path}`)
                 if (fs.existsSync(path)) {
                     core.info(`Found standard location: ${path}`)
@@ -104,6 +112,16 @@ function findVcvarsall(vsversion) {
     throw new Error('Microsoft Visual Studio not found')
 }
 export { findVcvarsall }
+
+// Split "NAME=value" at the first '=' only, as values may contain '=' themselves.
+// cmd also lists hidden per-drive variables like "=C:=C:\dir", whose names start with '='.
+function splitEnvLine(line) {
+    const index = line.indexOf('=', 1)
+    if (index < 0) {
+        return [line, undefined]
+    }
+    return [line.slice(0, index), line.slice(index + 1)]
+}
 
 function isPathVariable(name) {
     const pathLikeVariables = ['PATH', 'INCLUDE', 'LIB', 'LIBPATH']
@@ -139,7 +157,7 @@ function setupMSVCDevCmd(arch, sdk, toolset, uwp, spectre, vsversion) {
         "x86-64": "x64",
     }
     // Ignore case when matching as that's what humans expect.
-    if (arch.toLowerCase() in arch_aliases) {
+    if (Object.hasOwn(arch_aliases, arch.toLowerCase())) {
         arch = arch_aliases[arch.toLowerCase()]
     }
 
@@ -189,7 +207,7 @@ function setupMSVCDevCmd(arch, sdk, toolset, uwp, spectre, vsversion) {
     // Convert old environment lines into a dictionary for easier lookup.
     let old_env_vars = {}
     for (let string of old_environment) {
-        const [name, value] = string.split('=')
+        const [name, value] = splitEnvLine(string)
         old_env_vars[name] = value
     }
 
@@ -203,7 +221,10 @@ function setupMSVCDevCmd(arch, sdk, toolset, uwp, spectre, vsversion) {
         if (!string.includes('=')) {
             continue;
         }
-        let [name, new_value] = string.split('=')
+        let [name, new_value] = splitEnvLine(string)
+        if (!name) {
+            continue
+        }
         let old_value = old_env_vars[name]
         // For new variables "old_value === undefined".
         if (new_value !== old_value) {
