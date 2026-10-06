@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { defaultArch, vsversion_to_versionnumber, vsversion_to_year } from '../lib.js'
+import { defaultArch, describeInstallations, vsversion_to_versionnumber, vsversion_to_year } from '../lib.js'
 
 test('defaultArch follows the runner architecture', () => {
     assert.equal(defaultArch({ RUNNER_ARCH: 'X64' }), 'x64')
@@ -25,4 +25,13 @@ test('Visual Studio years and version numbers map both ways', () => {
     assert.equal(vsversion_to_versionnumber('16.0'), '16.0')
     assert.equal(vsversion_to_year('18.0'), '2026')
     assert.equal(vsversion_to_year('2019'), '2019')
+})
+
+test('describeInstallations lists what vswhere found', () => {
+    const text = describeInstallations([{ name: 'Visual Studio Build Tools 2026', version: '18.6.1', path: 'C:/VS' }])
+    assert.ok(text.includes('Visual Studio Build Tools 2026 (version 18.6.1) in C:/VS'))
+})
+
+test('describeInstallations says so when nothing was found', () => {
+    assert.match(describeInstallations([]), /did not report any Visual Studio installation/)
 })

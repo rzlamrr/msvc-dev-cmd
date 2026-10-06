@@ -19661,7 +19661,50 @@ function findVcvarsall(vsversion) {
     return path2;
   }
   info(`Not found in VS 2015 location: ${path2}`);
-  throw new Error("Microsoft Visual Studio not found");
+  const requested = vsversion ? ` (requested vsversion: ${vsversion})` : "";
+  throw new Error(`Microsoft Visual Studio not found${requested}\r
+${describeInstallations(listInstallations())}`);
+}
+function listInstallations() {
+  try {
+    const json = child_process.execSync("vswhere -products * -all -prerelease -format json").toString();
+    return JSON.parse(json).map((vs) => ({
+      name: vs.displayName,
+      version: vs.installationVersion,
+      path: vs.installationPath
+    }));
+  } catch (e) {
+    debug(`Could not list Visual Studio installations: ${e}`);
+    return [];
+  }
+}
+function describeInstallations(installations) {
+  if (installations.length == 0) {
+    return "vswhere did not report any Visual Studio installation on this machine.";
+  }
+  const lines = installations.map((vs) => `  - ${vs.name} (version ${vs.version}) in ${vs.path}`);
+  return "Visual Studio installations found by vswhere:\r\n" + lines.join("\r\n");
+}
+function listToolsets(installationPath) {
+  try {
+    return fs3.readdirSync(path.join(installationPath, "VC", "Tools", "MSVC")).filter((name) => /^\d+\.\d+\.\d+$/.test(name)).sort();
+  } catch (e) {
+    debug(`Could not list toolsets of ${installationPath}: ${e}`);
+    return [];
+  }
+}
+function installationOfVcvarsall(vcvarsall) {
+  const parts = vcvarsall.split("\\");
+  return parts.length > 4 ? parts.slice(0, -4).join("\\") : null;
+}
+function describeToolsets(toolset, vcvarsall) {
+  const installation = installationOfVcvarsall(vcvarsall);
+  const toolsets = installation ? listToolsets(installation) : [];
+  if (toolsets.length == 0) {
+    return "";
+  }
+  return `Toolsets installed in ${installation}: ${toolsets.join(", ")}\r
+"toolset: ${toolset}" must be a prefix of one of these (e.g. "14.XX") or be a full version number.`;
 }
 function splitEnvLine(line) {
   const index = line.indexOf("=", 1);
@@ -19733,7 +19776,11 @@ function setupMSVCDevCmd(arch2, sdk, toolset, uwp, spectre, vsversion) {
     return false;
   });
   if (error_messages.length > 0) {
-    throw new Error("invalid parameters\r\n" + error_messages.join("\r\n"));
+    let hints = "";
+    if (toolset && error_messages.some((line) => /toolset/i.test(line))) {
+      hints = describeToolsets(toolset, vcvarsall);
+    }
+    throw new Error("invalid parameters\r\n" + error_messages.join("\r\n") + (hints ? "\r\n" + hints : ""));
   }
   let old_env_vars = {};
   for (let string of old_environment) {

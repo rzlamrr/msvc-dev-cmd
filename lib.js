@@ -109,9 +109,66 @@ function findVcvarsall(vsversion) {
     }
     core.info(`Not found in VS 2015 location: ${path}`)
 
-    throw new Error('Microsoft Visual Studio not found')
+    const requested = vsversion ? ` (requested vsversion: ${vsversion})` : ''
+    throw new Error(`Microsoft Visual Studio not found${requested}\r\n${describeInstallations(listInstallations())}`)
 }
 export { findVcvarsall }
+
+// What "vswhere" knows about, to tell people what *is* there when what they asked for is not.
+function listInstallations() {
+    try {
+        const json = child_process.execSync('vswhere -products * -all -prerelease -format json').toString()
+        return JSON.parse(json).map((vs) => ({
+            name: vs.displayName,
+            version: vs.installationVersion,
+            path: vs.installationPath,
+        }))
+    } catch (e) {
+        core.debug(`Could not list Visual Studio installations: ${e}`)
+        return []
+    }
+}
+export { listInstallations }
+
+function describeInstallations(installations) {
+    if (installations.length == 0) {
+        return 'vswhere did not report any Visual Studio installation on this machine.'
+    }
+    const lines = installations.map((vs) => `  - ${vs.name} (version ${vs.version}) in ${vs.path}`)
+    return 'Visual Studio installations found by vswhere:\r\n' + lines.join('\r\n')
+}
+export { describeInstallations }
+
+// Full versions (e.g. "14.51.36231") of the MSVC toolsets installed in a Visual Studio installation.
+function listToolsets(installationPath) {
+    try {
+        return fs.readdirSync(path.join(installationPath, 'VC', 'Tools', 'MSVC'))
+            .filter((name) => /^\d+\.\d+\.\d+$/.test(name))
+            .sort()
+    } catch (e) {
+        core.debug(`Could not list toolsets of ${installationPath}: ${e}`)
+        return []
+    }
+}
+export { listToolsets }
+
+// The Visual Studio installation directory that a vcvarsall.bat belongs to
+// (<install>\VC\Auxiliary\Build\vcvarsall.bat), if it is laid out like that.
+function installationOfVcvarsall(vcvarsall) {
+    const parts = vcvarsall.split('\\')
+    return parts.length > 4 ? parts.slice(0, -4).join('\\') : null
+}
+
+function describeToolsets(toolset, vcvarsall) {
+    const installation = installationOfVcvarsall(vcvarsall)
+    const toolsets = installation ? listToolsets(installation) : []
+    if (toolsets.length == 0) {
+        return ''
+    }
+    return `Toolsets installed in ${installation}: ${toolsets.join(', ')}\r\n` +
+        `"toolset: ${toolset}" must be a prefix of one of these (e.g. "14.XX") or be a full version number.`
+}
+export { describeToolsets }
 
 // Split "NAME=value" at the first '=' only, as values may contain '=' themselves.
 // cmd also lists hidden per-drive variables like "=C:=C:\dir", whose names start with '='.
@@ -215,7 +272,11 @@ function setupMSVCDevCmd(arch, sdk, toolset, uwp, spectre, vsversion) {
         return false
     })
     if (error_messages.length > 0) {
-        throw new Error('invalid parameters' + '\r\n' + error_messages.join('\r\n'))
+        let hints = ''
+        if (toolset && error_messages.some((line) => /toolset/i.test(line))) {
+            hints = describeToolsets(toolset, vcvarsall)
+        }
+        throw new Error('invalid parameters' + '\r\n' + error_messages.join('\r\n') + (hints ? '\r\n' + hints : ''))
     }
 
     // Convert old environment lines into a dictionary for easier lookup.

@@ -85,6 +85,12 @@ These describe what `vcvarsall.bat` actually configured, for use by later steps 
 
 `installation-path`, `vs-version` and `toolset-version` are empty for very old Visual Studio versions that do not report them.
 
+## Troubleshooting
+
+If `toolset` or `vsversion` does not match what is installed, the error lists the Visual Studio installations found by `vswhere` and, for a bad `toolset`, the toolsets installed in the selected Visual Studio.
+Note that GitHub-hosted runners come with a single Visual Studio each (e.g., `windows-2022` has only 2022, `windows-2025-vs2026` only 2026), so `vsversion` normally does not need to be set there;
+see the [runner images](https://github.com/actions/runner-images) for the installed Visual Studio versions and toolsets.
+
 ## Caveats
 
 ### Name conflicts with `shell: bash`
