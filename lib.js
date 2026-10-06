@@ -204,7 +204,7 @@ function defaultArch(env = process.env) {
 }
 export { defaultArch }
 
-/** See https://github.com/ilammy/msvc-dev-cmd#inputs */
+/** See https://github.com/rzlamrr/msvc-dev-cmd#inputs */
 function setupMSVCDevCmd(arch, sdk, toolset, uwp, spectre, vsversion) {
     if (process.platform != 'win32') {
         core.info('This is not a Windows virtual environment, bye!')
