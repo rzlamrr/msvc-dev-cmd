@@ -72,6 +72,18 @@ jobs:
 - `spectre` – set `true` to use Visual Studio libraries with [Spectre](https://meltdownattack.com) mitigations
 - `vsversion` – the Visual Studio version to use. This can be the version number (e.g. 16.0 for 2019) or the year (e.g. "2019"); omit this input to select the latest version of Visual Studio. On [GitHub-hosted runners](https://docs.github.com/actions/using-github-hosted-runners/about-github-hosted-runners/about-github-hosted-runners), this input is not required because there is only one Visual Studio in the environment.
 
+## Outputs
+
+These describe what `vcvarsall.bat` actually configured, for use by later steps (e.g., `${{ steps.msvc.outputs.vs-version }}` for a step with `id: msvc`).
+
+- `arch` – target architecture passed to `vcvarsall.bat`, after resolving synonyms (e.g., `Win64` becomes `x64`)
+- `vcvarsall` – path of the `vcvarsall.bat` that was used
+- `installation-path` – Visual Studio installation directory, without a trailing backslash
+- `vs-version` – Visual Studio version number (e.g., `17.0` for 2022, `18.0` for 2026)
+- `toolset-version` – full version of the MSVC toolset in use (e.g., `14.51.36231`)
+
+`installation-path`, `vs-version` and `toolset-version` are empty for very old Visual Studio versions that do not report them.
+
 ## Caveats
 
 ### Name conflicts with `shell: bash`

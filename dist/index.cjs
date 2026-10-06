@@ -19542,6 +19542,14 @@ function getInput(name, options) {
   }
   return val.trim();
 }
+function setOutput(name, value) {
+  const filePath = process.env["GITHUB_OUTPUT"] || "";
+  if (filePath) {
+    return issueFileCommand("OUTPUT", prepareKeyValueMessage(name, value));
+  }
+  process.stdout.write(os4.EOL);
+  issueCommand("set-output", { name }, toCommandValue(value));
+}
 function setFailed(message) {
   process.exitCode = ExitCode.Failure;
   error(message);
@@ -19701,7 +19709,8 @@ function setupMSVCDevCmd(arch2, sdk, toolset, uwp, spectre, vsversion) {
   if (spectre == "true") {
     args.push("-vcvars_spectre_libs=spectre");
   }
-  const vcvars = `"${findVcvarsall(vsversion)}" ${args.join(" ")}`;
+  const vcvarsall = findVcvarsall(vsversion);
+  const vcvars = `"${vcvarsall}" ${args.join(" ")}`;
   debug(`vcvars command-line: ${vcvars}`);
   const cmd_output_string = child_process.execSync(`set && cls && ${vcvars} && cls && set`, { shell: "cmd" }).toString();
   const cmd_output_parts = cmd_output_string.split("\f");
@@ -19724,6 +19733,7 @@ function setupMSVCDevCmd(arch2, sdk, toolset, uwp, spectre, vsversion) {
     const [name, value] = splitEnvLine(string);
     old_env_vars[name] = value;
   }
+  let new_env_vars = {};
   startGroup("Environment variables");
   for (let string of new_environment) {
     if (!string.includes("=")) {
@@ -19733,6 +19743,7 @@ function setupMSVCDevCmd(arch2, sdk, toolset, uwp, spectre, vsversion) {
     if (!name) {
       continue;
     }
+    new_env_vars[name.toUpperCase()] = new_value;
     let old_value = old_env_vars[name];
     if (new_value !== old_value) {
       info(`Setting ${name}`);
@@ -19744,6 +19755,14 @@ function setupMSVCDevCmd(arch2, sdk, toolset, uwp, spectre, vsversion) {
   }
   endGroup();
   info(`Configured Developer Command Prompt`);
+  const vs_install_dir = new_env_vars["VSINSTALLDIR"];
+  return {
+    arch: arch2,
+    vcvarsall,
+    installationPath: vs_install_dir ? vs_install_dir.replace(/\\+$/, "") : "",
+    vsVersion: new_env_vars["VISUALSTUDIOVERSION"] || "",
+    toolsetVersion: new_env_vars["VCTOOLSVERSION"] || ""
+  };
 }
 
 // index.js
@@ -19754,7 +19773,14 @@ function main() {
   const uwp = getInput("uwp");
   const spectre = getInput("spectre");
   const vsversion = getInput("vsversion");
-  setupMSVCDevCmd(arch2, sdk, toolset, uwp, spectre, vsversion);
+  const result = setupMSVCDevCmd(arch2, sdk, toolset, uwp, spectre, vsversion);
+  if (result) {
+    setOutput("arch", result.arch);
+    setOutput("vcvarsall", result.vcvarsall);
+    setOutput("installation-path", result.installationPath);
+    setOutput("vs-version", result.vsVersion);
+    setOutput("toolset-version", result.toolsetVersion);
+  }
 }
 try {
   main();

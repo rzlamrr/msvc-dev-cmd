@@ -41,10 +41,22 @@ jobs:
         uses: actions/checkout@v7
       # No "npm ci" here on purpose: the action must run from the committed dist/ alone.
       - name: Enable Developer Command Prompt (amd64)
+        id: msvc
         uses: ./
         with:
           arch: amd64
           vsversion: ${{ matrix.vsyear }}
+      - name: Check the outputs
+        shell: pwsh
+        run: |
+          $outputs = '${{ toJSON(steps.msvc.outputs) }}' | ConvertFrom-Json
+          $outputs | Format-List
+          # "amd64" is passed to vcvarsall as is (only aliases like "Win64" get rewritten to "x64").
+          if ($outputs.arch -ne 'amd64') { throw "unexpected arch: $($outputs.arch)" }
+          if (-not (Test-Path $outputs.vcvarsall)) { throw "vcvarsall not found: $($outputs.vcvarsall)" }
+          if (-not (Test-Path $outputs.'installation-path')) { throw "bad installation-path: $($outputs.'installation-path')" }
+          if ($outputs.'installation-path'.EndsWith('\')) { throw "installation-path has a trailing backslash" }
+          if (-not $outputs.'vs-version' -or -not $outputs.'toolset-version') { throw "missing version outputs" }
       - name: Compile and run some C code (amd64)
         shell: cmd
         run: |

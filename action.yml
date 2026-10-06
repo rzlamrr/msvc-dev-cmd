@@ -14,6 +14,17 @@ inputs:
     description: Build for Universal Windows Platform
   vsversion:
     description: The Visual Studio version to use. This can be the version number (e.g. 16.0 for 2019) or the year (e.g. "2019").
+outputs:
+  arch:
+    description: Target architecture that was passed to vcvarsall.bat (after resolving aliases)
+  vcvarsall:
+    description: Path of the vcvarsall.bat that was used
+  installation-path:
+    description: Visual Studio installation directory (VSINSTALLDIR without the trailing backslash)
+  vs-version:
+    description: Visual Studio version number, e.g. 17.0 or 18.0 (VisualStudioVersion)
+  toolset-version:
+    description: Full version of the MSVC toolset in use, e.g. 14.51.36231 (VCToolsVersion)
 runs:
   using: node24
   main: dist/index.cjs

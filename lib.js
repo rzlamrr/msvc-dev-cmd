@@ -178,7 +178,8 @@ function setupMSVCDevCmd(arch, sdk, toolset, uwp, spectre, vsversion) {
         args.push('-vcvars_spectre_libs=spectre')
     }
 
-    const vcvars = `"${findVcvarsall(vsversion)}" ${args.join(' ')}`
+    const vcvarsall = findVcvarsall(vsversion)
+    const vcvars = `"${vcvarsall}" ${args.join(' ')}`
     core.debug(`vcvars command-line: ${vcvars}`)
 
     const cmd_output_string = child_process.execSync(`set && cls && ${vcvars} && cls && set`, {shell: "cmd"}).toString()
@@ -214,6 +215,8 @@ function setupMSVCDevCmd(arch, sdk, toolset, uwp, spectre, vsversion) {
     // Now look at the new environment and export everything that changed.
     // These are the variables set by vsvars.bat. Also export everything
     // that was not there during the first sweep: those are new variables.
+    // Environment names are case-insensitive on Windows, remember them upper-cased for lookups.
+    let new_env_vars = {}
     core.startGroup('Environment variables')
     for (let string of new_environment) {
         // vsvars.bat likes to print some fluff at the beginning.
@@ -225,6 +228,7 @@ function setupMSVCDevCmd(arch, sdk, toolset, uwp, spectre, vsversion) {
         if (!name) {
             continue
         }
+        new_env_vars[name.toUpperCase()] = new_value
         let old_value = old_env_vars[name]
         // For new variables "old_value === undefined".
         if (new_value !== old_value) {
@@ -242,5 +246,15 @@ function setupMSVCDevCmd(arch, sdk, toolset, uwp, spectre, vsversion) {
     core.endGroup()
 
     core.info(`Configured Developer Command Prompt`)
+
+    // What vcvarsall.bat actually configured, for later steps. Absent for very old Visual Studio versions.
+    const vs_install_dir = new_env_vars['VSINSTALLDIR']
+    return {
+        arch: arch,
+        vcvarsall: vcvarsall,
+        installationPath: vs_install_dir ? vs_install_dir.replace(/\\+$/, '') : '',
+        vsVersion: new_env_vars['VISUALSTUDIOVERSION'] || '',
+        toolsetVersion: new_env_vars['VCTOOLSVERSION'] || '',
+    }
 }
 export { setupMSVCDevCmd }
