@@ -1,8 +1,8 @@
-const core = require('@actions/core')
-const child_process = require('child_process')
-const fs = require('fs')
-const path = require('path')
-const process = require('process')
+import * as core from '@actions/core'
+import * as child_process from 'node:child_process'
+import * as fs from 'node:fs'
+import * as path from 'node:path'
+import process from 'node:process'
 
 const PROGRAM_FILES_X86 = process.env['ProgramFiles(x86)']
 const PROGRAM_FILES = [process.env['ProgramFiles(x86)'], process.env['ProgramFiles']]
@@ -29,7 +29,7 @@ function vsversion_to_versionnumber(vsversion) {
     }
     return vsversion
 }
-exports.vsversion_to_versionnumber = vsversion_to_versionnumber
+export { vsversion_to_versionnumber }
 
 function vsversion_to_year(vsversion) {
     if (Object.keys(VsYearVersion).includes(vsversion)) {
@@ -43,7 +43,7 @@ function vsversion_to_year(vsversion) {
     }
     return vsversion
 }
-exports.vsversion_to_year = vsversion_to_year
+export { vsversion_to_year }
 
 const VSWHERE_PATH = `${PROGRAM_FILES_X86}\\Microsoft Visual Studio\\Installer`
 
@@ -56,7 +56,7 @@ function findWithVswhere(pattern, version_pattern) {
     }
     return null
 }
-exports.findWithVswhere = findWithVswhere
+export { findWithVswhere }
 
 function findVcvarsall(vsversion) {
     const vsversion_number = vsversion_to_versionnumber(vsversion)
@@ -103,7 +103,7 @@ function findVcvarsall(vsversion) {
 
     throw new Error('Microsoft Visual Studio not found')
 }
-exports.findVcvarsall = findVcvarsall
+export { findVcvarsall }
 
 function isPathVariable(name) {
     const pathLikeVariables = ['PATH', 'INCLUDE', 'LIB', 'LIBPATH']
@@ -222,4 +222,4 @@ function setupMSVCDevCmd(arch, sdk, toolset, uwp, spectre, vsversion) {
 
     core.info(`Configured Developer Command Prompt`)
 }
-exports.setupMSVCDevCmd = setupMSVCDevCmd
+export { setupMSVCDevCmd }

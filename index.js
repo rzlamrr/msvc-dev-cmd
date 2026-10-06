@@ -1,5 +1,5 @@
-const { setupMSVCDevCmd } = require('./lib')
-const core = require('@actions/core')
+import { setupMSVCDevCmd } from './lib.js'
+import * as core from '@actions/core'
 
 function main() {
     var   arch    = core.getInput('arch')
