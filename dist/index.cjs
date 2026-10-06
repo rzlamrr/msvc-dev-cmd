@@ -19681,12 +19681,19 @@ function filterPathValue(path2) {
   }
   return paths.filter(unique).join(";");
 }
+function defaultArch(env = import_node_process.default.env) {
+  const host = (env["RUNNER_ARCH"] || env["PROCESSOR_ARCHITEW6432"] || env["PROCESSOR_ARCHITECTURE"] || "").toUpperCase();
+  return host === "ARM64" ? "arm64" : "x64";
+}
 function setupMSVCDevCmd(arch2, sdk, toolset, uwp, spectre, vsversion) {
   if (import_node_process.default.platform != "win32") {
     info("This is not a Windows virtual environment, bye!");
     return;
   }
   import_node_process.default.env.PATH += path.delimiter + VSWHERE_PATH;
+  if (!arch2) {
+    arch2 = defaultArch();
+  }
   let arch_aliases = {
     "win32": "x86",
     "win64": "x64",
@@ -19767,7 +19774,7 @@ function setupMSVCDevCmd(arch2, sdk, toolset, uwp, spectre, vsversion) {
 
 // index.js
 function main() {
-  var arch2 = getInput("arch");
+  const arch2 = getInput("arch");
   const sdk = getInput("sdk");
   const toolset = getInput("toolset");
   const uwp = getInput("uwp");

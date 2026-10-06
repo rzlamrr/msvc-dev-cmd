@@ -138,6 +138,15 @@ function filterPathValue(path) {
     return paths.filter(unique).join(';')
 }
 
+// The architecture to target when "arch" is not specified: the one of the machine we run on,
+// so that ARM64 runners get native ARM64 tools instead of cross-compiling from x64 emulation.
+function defaultArch(env = process.env) {
+    // RUNNER_ARCH is set by GitHub Actions and is right even if Node itself runs emulated.
+    const host = (env['RUNNER_ARCH'] || env['PROCESSOR_ARCHITEW6432'] || env['PROCESSOR_ARCHITECTURE'] || '').toUpperCase()
+    return host === 'ARM64' ? 'arm64' : 'x64'
+}
+export { defaultArch }
+
 /** See https://github.com/ilammy/msvc-dev-cmd#inputs */
 function setupMSVCDevCmd(arch, sdk, toolset, uwp, spectre, vsversion) {
     if (process.platform != 'win32') {
@@ -147,6 +156,10 @@ function setupMSVCDevCmd(arch, sdk, toolset, uwp, spectre, vsversion) {
 
     // Add standard location of "vswhere" to PATH, in case it's not there.
     process.env.PATH += path.delimiter + VSWHERE_PATH
+
+    if (!arch) {
+        arch = defaultArch()
+    }
 
     // There are all sorts of way the architectures are called. In addition to
     // values supported by Microsoft Visual C++, recognize some common aliases.

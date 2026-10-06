@@ -23,6 +23,8 @@ jobs:
       - run: npm ci
       - name: Run eslint
         run: npm run lint
+      - name: Run unit tests
+        run: npm test
   test:
     name: ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
@@ -95,6 +97,25 @@ jobs:
         run: |
           cl.exe hello.c
           dumpbin /headers hello.exe
+  arm64-host:
+    name: native arm64 (windows-11-arm)
+    runs-on: windows-11-arm
+    steps:
+      - name: Check out source code
+        uses: actions/checkout@v7
+      - name: Enable Developer Command Prompt (default arch)
+        id: msvc
+        uses: ./
+      - name: Check that the default is the native architecture
+        shell: pwsh
+        run: |
+          if ('${{ steps.msvc.outputs.arch }}' -ne 'arm64') { throw "unexpected default arch: ${{ steps.msvc.outputs.arch }}" }
+      - name: Compile and run some C code (native arm64)
+        shell: cmd
+        run: |
+          cl.exe hello.c
+          hello.exe
+          dumpbin /headers hello.exe | findstr /i "machine"
   audit:
     name: npm audit
     runs-on: ubuntu-latest

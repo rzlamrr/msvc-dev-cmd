@@ -56,8 +56,9 @@ jobs:
 
 - `arch` – target architecture
   - native compilation:
-    - `x64` (default) or its synonyms: `amd64`, `win64`, `x86_64`, `x86-64`
+    - `x64` (default, except on ARM64 runners where it is `arm64`) or its synonyms: `amd64`, `win64`, `x86_64`, `x86-64`
     - `x86` or its synonyms: `win32`
+    - `arm64` for native compilation on ARM64 runners such as `windows-11-arm`
   - cross-compilation: `x86_amd64`, `x86_arm`, `x86_arm64`, `amd64_x86`, `amd64_arm`, `amd64_arm64`
 - `sdk` – Windows SDK to use
   - do not specify to use the default SDK

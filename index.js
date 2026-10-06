@@ -2,7 +2,7 @@ import { setupMSVCDevCmd } from './lib.js'
 import * as core from '@actions/core'
 
 function main() {
-    var   arch    = core.getInput('arch')
+    const arch    = core.getInput('arch')
     const sdk     = core.getInput('sdk')
     const toolset = core.getInput('toolset')
     const uwp     = core.getInput('uwp')

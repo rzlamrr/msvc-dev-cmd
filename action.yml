@@ -2,8 +2,7 @@ name: Enable Developer Command Prompt
 description: Configure Microsoft Visual C++ command line
 inputs:
   arch:
-    description: Target architecture
-    default: x64
+    description: Target architecture (defaults to x64, or to arm64 on ARM64 runners)
   sdk:
     description: Windows SDK number to build for
   spectre:
