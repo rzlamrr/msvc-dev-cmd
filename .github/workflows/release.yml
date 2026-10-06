@@ -1,0 +1,30 @@
+name: msvc-dev-cmd (release)
+
+# Keeps the floating major version tag (e.g. "v2") pointing at the latest release of that major version,
+# so that users can write "uses: rzlamrr/msvc-dev-cmd@v2".
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  major-tag:
+    name: update major tag
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the release
+        uses: actions/checkout@v7
+      - name: Move the major version tag
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          if ! [[ "$TAG" =~ ^v([0-9]+)\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Release tag '$TAG' is not of the form vMAJOR.MINOR.PATCH, not touching the major tag."
+            exit 0
+          fi
+          major="v${BASH_REMATCH[1]}"
+          git tag --force "$major" "$TAG"
+          git push --force origin "refs/tags/$major"
