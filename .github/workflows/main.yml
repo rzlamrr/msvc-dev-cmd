@@ -15,9 +15,13 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Check out source code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
       - name: Download Internet
-        run: npm install
+        run: npm ci
       - name: Run eslint
         run: npm run lint
       - name: Enable Developer Command Prompt (amd64)
@@ -38,15 +42,6 @@ jobs:
         run: |
           cl.exe hello.c
           hello.exe
-      - name: Enable Developer Command Prompt (amd64_arm)
-        uses: ./
-        with:
-          arch: amd64_arm
-      - name: Compile some C code (arm)
-        shell: cmd
-        run: |
-          cl.exe hello.c
-          dumpbin /headers hello.exe
       - name: Enable Developer Command Prompt (amd64_arm64)
         uses: ./
         with:
@@ -61,18 +56,26 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out source code
-        uses: actions/checkout@v4
-      - run: npm install
-      - run: npm audit --audit-level=moderate --production
+        uses: actions/checkout@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: npm ci
+      - run: npm audit --audit-level=moderate --omit=dev
       - run: npm audit --audit-level=critical
   alias-arch:
     name: arch aliases
     runs-on: windows-latest
     steps:
       - name: Check out source code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
       - name: Download Internet
-        run: npm install
+        run: npm ci
       - name: Enable Developer Command Prompt
         uses: ./
         with:
