@@ -64,9 +64,9 @@ jobs:
       - run: npm ci
       - run: npm audit --audit-level=moderate --omit=dev
       - run: npm audit --audit-level=critical
-  alias-arch:
-    name: arch aliases
-    runs-on: windows-latest
+  check-dist:
+    name: dist is up to date
+    runs-on: ubuntu-latest
     steps:
       - name: Check out source code
         uses: actions/checkout@v7
@@ -74,8 +74,16 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: 24
-      - name: Download Internet
-        run: npm ci
+      - run: npm ci
+      - name: Rebuild dist/ and fail if it differs from the committed one
+        run: npm run check-dist
+  alias-arch:
+    name: arch aliases
+    runs-on: windows-latest
+    steps:
+      - name: Check out source code
+        uses: actions/checkout@v7
+      # No "npm ci" here on purpose: the action must run from the committed dist/ alone.
       - name: Enable Developer Command Prompt
         uses: ./
         with:

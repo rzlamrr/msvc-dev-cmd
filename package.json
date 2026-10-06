@@ -5,7 +5,9 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "lint": "eslint index.js lib.js eslint.config.js"
+    "build": "esbuild index.js --bundle --platform=node --target=node24 --format=cjs --legal-comments=none --outfile=dist/index.cjs",
+    "lint": "eslint index.js lib.js eslint.config.js",
+    "check-dist": "npm run build && git diff --exit-code -- dist"
   },
   "repository": {
     "type": "git",
@@ -32,6 +34,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "esbuild": "^0.28.2",
     "eslint": "^10.12.0",
     "globals": "^17.13.0"
   },
